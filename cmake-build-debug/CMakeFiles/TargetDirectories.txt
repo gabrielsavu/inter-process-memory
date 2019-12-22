@@ -1,0 +1,3 @@
+/home/savu/CLionProjects/memoryalloc/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/savu/CLionProjects/memoryalloc/cmake-build-debug/CMakeFiles/memoryalloc.dir
+/home/savu/CLionProjects/memoryalloc/cmake-build-debug/CMakeFiles/edit_cache.dir

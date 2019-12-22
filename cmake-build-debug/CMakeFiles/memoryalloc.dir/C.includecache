@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/savu/CLionProjects/memoryalloc/main.c
+stdio.h
+-
+sys/types.h
+-
+sys/wait.h
+-
+unistd.h
+-
+memory.h
+/home/savu/CLionProjects/memoryalloc/memory.h
+
+/home/savu/CLionProjects/memoryalloc/memory.h
+lzma.h
+-
+
