@@ -7,8 +7,9 @@
 int main() {
 
 
-    __heap_structure heap = ol_init();
+    __heap_structure heap;
+    ol_init(&heap);
 
-    printf("%p", heap.first_section);
+    printf("%p", heap.start);
     return 0;
 }

@@ -33,24 +33,34 @@ typedef struct {
 } __section_structure;
 
 typedef struct {
+
     // The size of the entire heap.
     size_t heap_size;
-    // Address with first section starts.
-    size_t first_section;
+
+
+    // Offset with first section starts.
+    size_t offset_first_section;
+
+
+    // The first section that is in the heap.
+    __section_structure *first_section;
+
+
+    // Shared memory file descriptor.
+    int shm_fd;
 } __heap_header;
 
 typedef struct {
     // The header of the heap.
     __heap_header header;
-    // The first section that is in the heap.
-    __section_structure *first_section;
+
     // The starting address of the heap.
     void *start;
 } __heap_structure;
 
-__heap_structure ol_init();
+short int ol_init(__heap_structure *);
 void ol_destroy(__heap_structure *);
-__section_structure ol_malloc(size_t);
+__section_structure ol_malloc(__heap_structure *, size_t);
 void ol_free(__section_structure);
 void *ol_get(__section_structure);
 

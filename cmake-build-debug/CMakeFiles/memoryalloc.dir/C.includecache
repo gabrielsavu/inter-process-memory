@@ -18,6 +18,20 @@ unistd.h
 memory.h
 /home/savu/CLionProjects/memoryalloc/memory.h
 
+/home/savu/CLionProjects/memoryalloc/memory.c
+memory.h
+/home/savu/CLionProjects/memoryalloc/memory.h
+sys/mman.h
+-
+unistd.h
+-
+fcntl.h
+-
+stdio.h
+-
+errno.h
+-
+
 /home/savu/CLionProjects/memoryalloc/memory.h
 lzma.h
 -
