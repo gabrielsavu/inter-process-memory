@@ -5,14 +5,15 @@
 #ifndef MEMORYALLOC_MEMORY_H
 #define MEMORYALLOC_MEMORY_H
 
-#include <lzma.h>
+#include <inttypes.h>
+#include <pthread.h>
 
 /*
  * |----------------------------------------------------------------------------------------------
  * |          HEADER       |                  SECTIONS
  * |  (size, first section |  (each section contains: a header in which there is
  * |  ....., etc)          |  the next available section in number of bytes and the size of the
- *                         |  current section, and the data).
+ * |                       |  current section, and the data).
  * |----------------------------------------------------------------------------------------------
  */
 
@@ -21,9 +22,15 @@
 typedef struct {
     // The size of the section data.
     size_t section_size;
+    // If the section has a next section
+    short unsigned has_next;
     // Number of bytes of the next available section.
     size_t next_section;
 } __section_header;
+
+/* **WARNING** Every data added to this structure MUST be added to the header.
+ * All the calculation depends on this structure.
+ */
 
 typedef struct {
     // The header of the section.
@@ -48,8 +55,15 @@ typedef struct {
 
     // Shared memory file descriptor.
     int shm_fd;
+
+    // The mutex.
+    pthread_mutex_t mutex;
 } __heap_header;
 
+
+/* **WARNING** Every data added to this structure MUST be added to the header.
+ * All the calculation depends on this structure.
+ */
 typedef struct {
     // The header of the heap.
     __heap_header header;
@@ -58,10 +72,16 @@ typedef struct {
     void *start;
 } __heap_structure;
 
-short int ol_init(__heap_structure *);
+__heap_structure *ol_init(void);
 void ol_destroy(__heap_structure *);
-__section_structure ol_malloc(__heap_structure *, size_t);
+__section_structure *ol_malloc(__heap_structure *, size_t);
 void ol_free(__section_structure);
 void *ol_get(__section_structure);
 
+/*
+#define ol_set_buffer(section, type_t, val) ({ \
+    unsigned char bar; \
+    section->data = (type_t*)val; \
+    })
+*/
 #endif //MEMORYALLOC_MEMORY_H

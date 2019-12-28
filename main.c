@@ -1,15 +1,30 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include "memory.h"
 
+
+
+
 int main() {
 
 
-    __heap_structure heap;
-    ol_init(&heap);
+    printf("hello\n");
+    __heap_structure *heap = ol_init();
+    unsigned i;
+    for (i = 0; i < 10; i ++) {
+        pid_t cpid = fork();
+        if (cpid == 0) {
+            __section_structure *s = ol_malloc(heap, 10);
 
-    printf("%p", heap.start);
+            printf("%d: %p\n", i, s);
+            return 0;
+        }
+    }
+
+    wait(NULL);
+    ol_destroy(heap);
     return 0;
 }
