@@ -20,12 +20,9 @@
 #define HEAP_FAILED 0x0
 
 typedef struct {
-    // The size of the section data.
-    size_t section_size;
-    // If the section has a next section
-    short unsigned has_next;
-    // Number of bytes of the next available section.
-    size_t next_section;
+    size_t section_size; /** The size of the section data. */
+    void *prev; /** Previous section in the chain. */
+    void *next; /** Next section in the chain. */
 } __section_header;
 
 /* **WARNING** Every data added to this structure MUST be added to the header.
@@ -33,31 +30,15 @@ typedef struct {
  */
 
 typedef struct {
-    // The header of the section.
-    __section_header header;
-    // Data inside the section (the size of it is in the header).
-    void *data;
+    __section_header header; /** The header of the section. */
+    void *data; /** Data inside the section (the size of it is in the header). */
 } __section_structure;
 
 typedef struct {
-
-    // The size of the entire heap.
-    size_t heap_size;
-
-
-    // Offset with first section starts.
-    size_t offset_first_section;
-
-
-    // The first section that is in the heap.
-    __section_structure *first_section;
-
-
-    // Shared memory file descriptor.
-    int shm_fd;
-
-    // The mutex.
-    pthread_mutex_t mutex;
+    size_t heap_size; /** The size of the entire heap. */
+    __section_structure *first_section; /** The first section that is in the heap. */
+    int shm_fd; /** Shared memory file descriptor. */
+    pthread_mutex_t mutex; /** The mutex... */
 } __heap_header;
 
 
@@ -65,17 +46,14 @@ typedef struct {
  * All the calculation depends on this structure.
  */
 typedef struct {
-    // The header of the heap.
-    __heap_header header;
-
-    // The starting address of the heap.
-    void *start;
+    __heap_header header; /** The header of the heap. */
+    void *start; /** The starting address of the heap. */
 } __heap_structure;
 
 __heap_structure *ol_init(void);
 void ol_destroy(__heap_structure *);
 __section_structure *ol_malloc(__heap_structure *, size_t);
-void ol_free(__section_structure);
+void ol_free(__heap_structure *, __section_structure *);
 void *ol_get(__section_structure);
 
 /*

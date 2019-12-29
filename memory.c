@@ -10,17 +10,17 @@
 #include <errno.h>
 
 #define SHM_NAME "memory"
-#define HEAP_SIZE 1024*4
+#define HEAP_SIZE 1024*10
 
+/*
+ * CODE LIST
+ * 0 - uh oh... something went wrong.
+ * 1 - the heap is clear, no need to update the last section, only the first section in heap header.
+ * 2 - you are at the last section in the heap.
+ * 3 - you are in between 2 sections, some math required.
+ */
 typedef struct {
     void *ptr;
-    /*
-     * CODE LIST
-     * 0 - uh oh... something went wrong.
-     * 1 - the heap is clear, no need to update the last section, only the first section in heap header.
-     * 2 - you are at the last section in the heap.
-     * 3 - you are in between 2 sections, some math required.
-     */
     unsigned char result;
 } __operational_result;
 
@@ -41,7 +41,7 @@ __heap_structure *ol_init(void) {
         shm_unlink(SHM_NAME);
         return NULL;
     }
-    // Mapping the shm to the process memory.
+    // Mapping the shared memory file to the process memory.
     shm_ptr = mmap(0, HEAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, shm_fd , 0);
     if (shm_ptr == MAP_FAILED) {
         shm_unlink(SHM_NAME);
@@ -54,7 +54,6 @@ __heap_structure *ol_init(void) {
     heap->start = shm_ptr;
     heap->header.first_section = NULL;
 
-    //heap->header.mutex = PTHREAD_MUTEX_INITIALIZER;
     // Initialize mutex.
     if (pthread_mutex_init(&(heap->header.mutex), NULL)) {
         shm_unlink(SHM_NAME);
@@ -86,22 +85,22 @@ __operational_result find_section_free(__heap_structure *heap, size_t length) {
     }
 
     while (section != NULL) {
-        // Check if the section has next section.
-        size_t sizeof_first = sizeof(section->header) + section->header.section_size;
-        if (section->header.has_next == 0) {
+        __section_structure *next = section->header.next;
+        // Check if the section has a next.
+        if (next == NULL) {
             result.ptr = section;
             result.result = 2;
             return result;
         }
         // If the length between the 2 section in greater then the length needed then put the section there.
-        if (section->header.next_section >= length) {
+        if ((next - (section + sizeof(section->header) + section->header.section_size)) >= length) {
+            printf("here! ");
             result.ptr = section;
             result.result = 3;
             return result;
         }
-        section = section + sizeof_first + section->header.next_section;
+        section = section->header.next;
     }
-
     return result;
 }
 
@@ -112,31 +111,27 @@ __section_structure *ol_malloc(__heap_structure *heap, size_t size) {
 
     if (operational.result == 0) {
         pthread_mutex_unlock(&(heap->header.mutex));
-        // well.. that's not good...
         return NULL;
     }
     else if (operational.result == 1) {
-        // for now the offset will be 0, we will see in the future.
-        heap->header.offset_first_section = 0;
         heap->header.first_section = operational.ptr;
         __section_structure *section = operational.ptr;
-        section->header.has_next = 0;
-        section->header.next_section = 0;
+        section->header.next = NULL;
+        section->header.prev = NULL;
         section->header.section_size = size;
-        section->data = 0;
+        section->data = NULL;
         pthread_mutex_unlock(&(heap->header.mutex));
         return section;
     }
     else if (operational.result == 2) {
         __section_structure *last_section = operational.ptr;
         size_t sizeof_last_section = sizeof(last_section->header) + last_section->header.section_size;
-        last_section->header.has_next = 1;
-        last_section->header.next_section = 0;
         __section_structure *new_section = last_section + sizeof_last_section;
-        new_section->header.has_next = 0;
-        new_section->header.next_section = 0;
+        last_section->header.next = new_section;
+        new_section->header.next = NULL;
+        new_section->header.prev = last_section;
         new_section->header.section_size = size;
-        new_section->data = 0;
+        new_section->data = NULL;
         pthread_mutex_unlock(&(heap->header.mutex));
         return new_section;
     }
@@ -146,15 +141,31 @@ __section_structure *ol_malloc(__heap_structure *heap, size_t size) {
 
         __section_structure *new_section = last_section + sizeof_last_section;
         new_section->header.section_size = size;
-        size_t sizeof_section = sizeof(new_section->header) + new_section->header.section_size;
-        new_section->header.has_next = 1;
-        new_section->header.next_section = last_section->header.next_section - sizeof_section;
+        new_section->header.prev = last_section;
+        new_section->header.next = last_section->header.next;
         new_section->header.section_size = size;
-        new_section->data = 0;
+        new_section->data = NULL;
 
-        last_section->header.has_next = 1;
-        last_section->header.next_section = 0;
+        last_section->header.next = new_section;
         pthread_mutex_unlock(&(heap->header.mutex));
         return new_section;
+    }
+}
+
+void ol_free(__heap_structure *heap, __section_structure *section) {
+    if (section == NULL || heap == NULL) {
+        return;
+    }
+    __section_structure *prev = section->header.prev;
+    __section_structure *next = section->header.next;
+    if (section == heap->header.first_section) {
+        heap->header.first_section = next;
+    }
+
+    if (prev != NULL) {
+        prev->header.next = next;
+    }
+    if (next != NULL) {
+        next->header.prev = prev;
     }
 }

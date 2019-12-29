@@ -13,18 +13,19 @@ int main() {
 
     printf("hello\n");
     __heap_structure *heap = ol_init();
+
     unsigned i;
     for (i = 0; i < 10; i ++) {
-        pid_t cpid = fork();
-        if (cpid == 0) {
-            __section_structure *s = ol_malloc(heap, 10);
+        if (fork() == 0) {
+            __section_structure *s = ol_malloc(heap, 4);
 
             printf("%d: %p\n", i, s);
             return 0;
         }
     }
-
-    wait(NULL);
+    for (i = 0; i < 10; i ++) {
+        wait(NULL);
+    }
     ol_destroy(heap);
     return 0;
 }
