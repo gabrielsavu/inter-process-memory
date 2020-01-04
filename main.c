@@ -9,13 +9,13 @@ int main() {
 
     void *heap = ol_init();
 
+
     printf("Heap: %p\n", heap);
-    void *a = ol_malloc(heap, 4);
+    /*void *a = ol_malloc(heap, 4);
     void *b = ol_malloc(heap, 4);
-    //void *c = ol_malloc(heap, 4);
+    void *c = ol_malloc(heap, 4);*/
 
 
-    /*
     unsigned i;
     for (i = 0; i < 10; i ++) {
         if (fork() == 0) {
@@ -26,8 +26,8 @@ int main() {
     for (i = 0; i < 10; i ++) {
         wait(NULL);
     }
-    */
-    //ol_print_heap(heap);
-    //ol_destroy(heap);
+
+    ol_print_heap(heap);
+    ol_destroy(heap);
     return 0;
 }

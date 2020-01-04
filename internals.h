@@ -9,7 +9,7 @@
 #include <pthread.h>
 
 #define SHM_HEAP_NAME "memory"
-#define HEAP_SIZE 50
+#define HEAP_SIZE (1024 * 4)
 
 /*
  * CODE LIST

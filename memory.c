@@ -61,13 +61,12 @@ void * __is_in_heap(void *heap, void *address, size_t size) {
     size_t length_between = end_of_section - heap;
 
     if (length_between > heap_header->heap_size) {
-        printf("Aici!");
         return NULL;
     }
     return address;
 }
 
-__operational_result find_section_free(void *heap, size_t length) {
+__operational_result __find_section_free(void *heap, size_t length) {
     __heap_header *heap_header = heap;
     void *section = heap_header->first_section;
     __operational_result result;
@@ -119,9 +118,10 @@ void *ol_malloc(void *heap, size_t size) {
     __heap_header *heap_header = heap;
     pthread_mutex_lock(&(heap_header->mutex));
 
-    __operational_result operational = find_section_free(heap, size);
+    __operational_result operational = __find_section_free(heap, size);
 
     if (operational.result == 0) {
+        printf("Error!");
         pthread_mutex_unlock(&(heap_header->mutex));
         return NULL;
     } else if (operational.result == 1) {
@@ -147,6 +147,7 @@ void *ol_malloc(void *heap, size_t size) {
         new_first_section->section_size = size;
 
         old_first_section->prev = new_first_section;
+        pthread_mutex_unlock(&(heap_header->mutex));
         return (void *) new_first_section + sizeof(__section_header);
 
     } else if (operational.result == 3) {
@@ -154,7 +155,7 @@ void *ol_malloc(void *heap, size_t size) {
 
         size_t sizeof_last_section = sizeof(__section_header) + last_section->section_size;
         __section_header *new_section = (void *) last_section + sizeof_last_section;
-        if (__is_in_heap(heap, new_section, size)) {
+        if (__is_in_heap(heap, new_section, size) == NULL) {
             pthread_mutex_unlock(&(heap_header->mutex));
             return NULL;
         }
