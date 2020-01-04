@@ -4,6 +4,7 @@
 CMakeFiles/memoryalloc.dir/main.c.o: ../main.c
 CMakeFiles/memoryalloc.dir/main.c.o: ../memory.h
 
+CMakeFiles/memoryalloc.dir/memory.c.o: ../internals.h
 CMakeFiles/memoryalloc.dir/memory.c.o: ../memory.c
 CMakeFiles/memoryalloc.dir/memory.c.o: ../memory.h
 

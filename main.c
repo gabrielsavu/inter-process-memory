@@ -5,27 +5,29 @@
 #include <unistd.h>
 #include "memory.h"
 
-
-
-
 int main() {
 
+    void *heap = ol_init();
 
-    printf("hello\n");
-    __heap_structure *heap = ol_init();
+    printf("Heap: %p\n", heap);
+    void *a = ol_malloc(heap, 4);
+    void *b = ol_malloc(heap, 4);
+    //void *c = ol_malloc(heap, 4);
 
+
+    /*
     unsigned i;
     for (i = 0; i < 10; i ++) {
         if (fork() == 0) {
-            __section_structure *s = ol_malloc(heap, 4);
-
-            printf("%d: %p\n", i, s);
+            void *s = ol_malloc(heap, 4);
             return 0;
         }
     }
     for (i = 0; i < 10; i ++) {
         wait(NULL);
     }
-    ol_destroy(heap);
+    */
+    //ol_print_heap(heap);
+    //ol_destroy(heap);
     return 0;
 }

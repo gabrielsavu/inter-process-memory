@@ -7,165 +7,214 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <errno.h>
+#include "internals.h"
 
-#define SHM_NAME "memory"
-#define HEAP_SIZE 1024*10
-
-/*
- * CODE LIST
- * 0 - uh oh... something went wrong.
- * 1 - the heap is clear, no need to update the last section, only the first section in heap header.
- * 2 - you are at the last section in the heap.
- * 3 - you are in between 2 sections, some math required.
- */
-typedef struct {
-    void *ptr;
-    unsigned char result;
-} __operational_result;
-
-
-__heap_structure *ol_init(void) {
+void *ol_init(void) {
     int shm_fd;
     void *shm_ptr;
-    __heap_structure *heap;
+    __heap_header *heap;
 
     // Creating the shader memory file.
-    shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    shm_fd = shm_open(SHM_HEAP_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (shm_fd < 0) {
         return NULL;
     }
 
     // Resize it for the heap size.
     if (ftruncate(shm_fd, HEAP_SIZE) == -1) {
-        shm_unlink(SHM_NAME);
+        shm_unlink(SHM_HEAP_NAME);
         return NULL;
     }
     // Mapping the shared memory file to the process memory.
     shm_ptr = mmap(0, HEAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, shm_fd , 0);
     if (shm_ptr == MAP_FAILED) {
-        shm_unlink(SHM_NAME);
+        shm_unlink(SHM_HEAP_NAME);
         return NULL;
     }
 
     heap = shm_ptr;
-    heap->header.shm_fd = shm_fd;
-    heap->header.heap_size = HEAP_SIZE;
-    heap->start = shm_ptr;
-    heap->header.first_section = NULL;
+    heap->shm_fd = shm_fd;
+    heap->heap_size = HEAP_SIZE;
+    heap->first_section = NULL;
 
     // Initialize mutex.
-    if (pthread_mutex_init(&(heap->header.mutex), NULL)) {
-        shm_unlink(SHM_NAME);
+    if (pthread_mutex_init(&(heap->mutex), NULL)) {
+        shm_unlink(SHM_HEAP_NAME);
         return NULL;
     }
     return heap;
 }
 
-void ol_destroy(__heap_structure *heap) {
+void ol_destroy(void *heap) {
     if (heap == NULL) {
         return;
     }
-    munmap(heap, heap->header.heap_size);
-    shm_unlink(SHM_NAME);
+    __heap_header *heap_header = heap;
+    pthread_mutex_destroy(&(heap_header->mutex));
+    munmap(heap, heap_header->heap_size);
+    shm_unlink(SHM_HEAP_NAME);
 }
 
-__operational_result find_section_free(__heap_structure *heap, size_t length) {
+void * __is_in_heap(void *heap, void *address, size_t size) {
+    __heap_header *heap_header = heap;
+    void *end_of_section = address + sizeof(__section_header) + size;
+    size_t length_between = end_of_section - heap;
 
-    __section_structure *section = heap->header.first_section;
+    if (length_between > heap_header->heap_size) {
+        printf("Aici!");
+        return NULL;
+    }
+    return address;
+}
+
+__operational_result find_section_free(void *heap, size_t length) {
+    __heap_header *heap_header = heap;
+    void *section = heap_header->first_section;
     __operational_result result;
     result.ptr = NULL;
     result.result = 0;
 
     // Check if there is a first section.
     if (section == NULL) {
-        result.ptr = heap->start + sizeof(heap->header);
+        result.ptr = __is_in_heap(heap, (void *) heap + sizeof(__heap_header), length);
         result.result = 1;
         return result;
     }
 
-    while (section != NULL) {
-        __section_structure *next = section->header.next;
+    // If there is space between header and first section.
+    size_t space_before_first = (void *) section - ((void *) heap + sizeof(__heap_header));
+    if (space_before_first >= length) {
+        result.ptr = (void *) section;
+        result.result = 2;
+        return result;
+    }
+
+    __section_header *h_section = section;
+
+    while (h_section != NULL) {
+
+
+        __section_header *next = h_section->next;
         // Check if the section has a next.
         if (next == NULL) {
-            result.ptr = section;
-            result.result = 2;
-            return result;
-        }
-        // If the length between the 2 section in greater then the length needed then put the section there.
-        if ((next - (section + sizeof(section->header) + section->header.section_size)) >= length) {
-            printf("here! ");
-            result.ptr = section;
+            result.ptr = h_section;
             result.result = 3;
             return result;
         }
-        section = section->header.next;
+
+        size_t space_between_sections = ((void *) next - ((void *) h_section + sizeof(__section_header) + h_section->section_size));
+
+        // If the length between the 2 section in greater then the length needed then put the section there.
+        if (space_between_sections >= length) {
+            result.ptr = h_section;
+            result.result = 4;
+            return result;
+        }
+        h_section = h_section->next;
     }
     return result;
 }
 
-__section_structure *ol_malloc(__heap_structure *heap, size_t size) {
-    pthread_mutex_lock(&(heap->header.mutex));
+void *ol_malloc(void *heap, size_t size) {
+    __heap_header *heap_header = heap;
+    pthread_mutex_lock(&(heap_header->mutex));
 
     __operational_result operational = find_section_free(heap, size);
 
     if (operational.result == 0) {
-        pthread_mutex_unlock(&(heap->header.mutex));
+        pthread_mutex_unlock(&(heap_header->mutex));
         return NULL;
-    }
-    else if (operational.result == 1) {
-        heap->header.first_section = operational.ptr;
-        __section_structure *section = operational.ptr;
-        section->header.next = NULL;
-        section->header.prev = NULL;
-        section->header.section_size = size;
-        section->data = NULL;
-        pthread_mutex_unlock(&(heap->header.mutex));
-        return section;
-    }
-    else if (operational.result == 2) {
-        __section_structure *last_section = operational.ptr;
-        size_t sizeof_last_section = sizeof(last_section->header) + last_section->header.section_size;
-        __section_structure *new_section = last_section + sizeof_last_section;
-        last_section->header.next = new_section;
-        new_section->header.next = NULL;
-        new_section->header.prev = last_section;
-        new_section->header.section_size = size;
-        new_section->data = NULL;
-        pthread_mutex_unlock(&(heap->header.mutex));
-        return new_section;
-    }
-    else {
-        __section_structure *last_section = operational.ptr;
-        size_t sizeof_last_section = sizeof(last_section->header) + last_section->header.section_size;
+    } else if (operational.result == 1) {
+        __section_header *first_section = operational.ptr;
+        if (first_section == NULL) {
+            pthread_mutex_unlock(&(heap_header->mutex));
+            return NULL;
+        }
+        heap_header->first_section = first_section;
+        first_section->next = NULL;
+        first_section->prev = NULL;
+        first_section->section_size = size;
+        pthread_mutex_unlock(&(heap_header->mutex));
+        return (void *) first_section + sizeof(__section_header);
+    } else if (operational.result == 2) {
+        __section_header *old_first_section = operational.ptr;
+        __section_header *new_first_section = (void *) heap + sizeof(__heap_header);
 
-        __section_structure *new_section = last_section + sizeof_last_section;
-        new_section->header.section_size = size;
-        new_section->header.prev = last_section;
-        new_section->header.next = last_section->header.next;
-        new_section->header.section_size = size;
-        new_section->data = NULL;
+        heap_header->first_section = new_first_section;
 
-        last_section->header.next = new_section;
-        pthread_mutex_unlock(&(heap->header.mutex));
-        return new_section;
+        new_first_section->next = old_first_section;
+        new_first_section->prev = NULL;
+        new_first_section->section_size = size;
+
+        old_first_section->prev = new_first_section;
+        return (void *) new_first_section + sizeof(__section_header);
+
+    } else if (operational.result == 3) {
+        __section_header *last_section = operational.ptr;
+
+        size_t sizeof_last_section = sizeof(__section_header) + last_section->section_size;
+        __section_header *new_section = (void *) last_section + sizeof_last_section;
+        if (__is_in_heap(heap, new_section, size)) {
+            pthread_mutex_unlock(&(heap_header->mutex));
+            return NULL;
+        }
+
+        last_section->next = new_section;
+        new_section->next = NULL;
+        new_section->prev = last_section;
+        new_section->section_size = size;
+        pthread_mutex_unlock(&(heap_header->mutex));
+        return (void *) new_section + sizeof(__section_header);
+    } else {
+        __section_header *last_section = operational.ptr;
+        size_t sizeof_last_section = sizeof(__section_header) + last_section->section_size;
+
+        __section_header *new_section = (void *) last_section + sizeof_last_section;
+
+        new_section->section_size = size;
+        new_section->prev = last_section;
+        new_section->next = last_section->next;
+        new_section->section_size = size;
+
+        last_section->next = new_section;
+        pthread_mutex_unlock(&(heap_header->mutex));
+        return (void *) new_section + sizeof(__section_header);
     }
 }
 
-void ol_free(__heap_structure *heap, __section_structure *section) {
-    if (section == NULL || heap == NULL) {
+void ol_free(void *heap, void *data) {
+    if (data == NULL || heap == NULL) {
         return;
     }
-    __section_structure *prev = section->header.prev;
-    __section_structure *next = section->header.next;
-    if (section == heap->header.first_section) {
-        heap->header.first_section = next;
+
+    __heap_header *heap_header = heap;
+    __section_header *section_header = data - sizeof(__section_header);
+
+    pthread_mutex_lock(&(heap_header->mutex));
+
+    __section_header *prev = section_header->prev;
+    __section_header *next = section_header->next;
+    if (section_header == heap_header->first_section) {
+        heap_header->first_section = next;
     }
 
     if (prev != NULL) {
-        prev->header.next = next;
+        prev->next = next;
     }
     if (next != NULL) {
-        next->header.prev = prev;
+        next->prev = prev;
     }
+
+    pthread_mutex_unlock(&(heap_header->mutex));
+}
+
+void ol_print_heap(void *heap) {
+    printf("---------\n");
+    __heap_header *heap_header = heap;
+    __section_header *section = heap_header->first_section;
+    while(section != NULL) {
+        printf("Address: %p\n", section);
+        section = section->next;
+    }
+    printf("---------\n");
 }

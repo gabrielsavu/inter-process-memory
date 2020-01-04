@@ -78,6 +78,9 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="/home/savu/CLionProjects/memoryalloc/internals.h">
+			<Option target="memoryalloc"/>
+		</Unit>
 		<Unit filename="/home/savu/CLionProjects/memoryalloc/main.c">
 			<Option target="memoryalloc"/>
 		</Unit>
