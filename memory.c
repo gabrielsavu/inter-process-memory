@@ -15,7 +15,7 @@ void *ol_init(void) {
     __heap_header *heap;
 
     // Creating the shader memory file.
-    shm_fd = shm_open(SHM_HEAP_NAME, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    shm_fd = shm_open(SHM_HEAP_NAME, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
     if (shm_fd < 0) {
         return NULL;
     }
@@ -26,7 +26,7 @@ void *ol_init(void) {
         return NULL;
     }
     // Mapping the shared memory file to the process memory.
-    shm_ptr = mmap(0, HEAP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, shm_fd , 0);
+    shm_ptr = mmap(0, HEAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if (shm_ptr == MAP_FAILED) {
         shm_unlink(SHM_HEAP_NAME);
         return NULL;
@@ -36,9 +36,27 @@ void *ol_init(void) {
     heap->shm_fd = shm_fd;
     heap->heap_size = HEAP_SIZE;
     heap->first_section = NULL;
+    heap->min.prev_section = NULL;
+    heap->min.free_size = HEAP_SIZE - sizeof(__heap_header);
 
-    // Initialize mutex.
-    if (pthread_mutex_init(&(heap->mutex), NULL)) {
+    pthread_mutexattr_t attr;
+
+    if (pthread_mutexattr_init(&attr)) {
+        shm_unlink(SHM_HEAP_NAME);
+        return NULL;
+    }
+
+    if (pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED)) {
+        shm_unlink(SHM_HEAP_NAME);
+        return NULL;
+    }
+
+    if (pthread_mutex_init(&(heap->mutex), &attr)) {
+        shm_unlink(SHM_HEAP_NAME);
+        return NULL;
+    }
+
+    if(pthread_mutexattr_destroy(&attr)) {
         shm_unlink(SHM_HEAP_NAME);
         return NULL;
     }
@@ -55,7 +73,37 @@ void ol_destroy(void *heap) {
     shm_unlink(SHM_HEAP_NAME);
 }
 
-void * __is_in_heap(void *heap, void *address, size_t size) {
+short int __resize_heap(void *heap) {
+
+    __heap_header *heap_header = heap;
+    size_t actual_size = heap_header->heap_size;
+    size_t new_size = actual_size * 2;
+    int shm_fd = heap_header->shm_fd;
+
+    munmap(heap + sizeof(pthread_mutex_t), heap_header->heap_size - sizeof(pthread_mutex_t));
+
+    // Resize it for the new heap size.
+    if (ftruncate(shm_fd, new_size) == -1) {
+        shm_unlink(SHM_HEAP_NAME);
+        return 0;
+    }
+
+    __heap_header *new_heap;
+    void *shm_ptr;
+
+    // Mapping the shared memory file to the process memory.
+    shm_ptr = mmap(heap + sizeof(pthread_mutex_t), new_size - sizeof(pthread_mutex_t), PROT_READ|PROT_WRITE, MAP_SHARED, shm_fd , 0);
+    if (shm_ptr == MAP_FAILED) {
+        shm_unlink(SHM_HEAP_NAME);
+        return 0;
+    }
+
+    new_heap = shm_ptr;
+    new_heap->heap_size = new_size;
+    return 1;
+}
+
+void *__is_in_heap(void *heap, void *address, size_t size) {
     __heap_header *heap_header = heap;
     void *end_of_section = address + sizeof(__section_header) + size;
     size_t length_between = end_of_section - heap;
@@ -66,26 +114,52 @@ void * __is_in_heap(void *heap, void *address, size_t size) {
     return address;
 }
 
-__operational_result __find_section_free(void *heap, size_t length) {
+__operational_result __find_section_free(void *heap, size_t size) {
     __heap_header *heap_header = heap;
     void *section = heap_header->first_section;
     __operational_result result;
     result.ptr = NULL;
     result.result = 0;
 
+
+
     // Check if there is a first section.
     if (section == NULL) {
-        result.ptr = __is_in_heap(heap, (void *) heap + sizeof(__heap_header), length);
+        result.ptr = __is_in_heap(heap, (void *) heap + sizeof(__heap_header), size);
         result.result = 1;
+
+        // Update the min section in the heap.
+        heap_header->min.prev_section = result.ptr;
+        heap_header->min.free_size = (heap + heap_header->heap_size) - result.ptr;
         return result;
     }
 
     // If there is space between header and first section.
     size_t space_before_first = (void *) section - ((void *) heap + sizeof(__heap_header));
-    if (space_before_first >= length) {
+    if (space_before_first >= size) {
         result.ptr = (void *) section;
         result.result = 2;
         return result;
+    }
+
+    if (heap_header->min.free_size >= size + sizeof(__section_header)) {
+        if (heap_header->min.prev_section != NULL) {
+            void *min = heap_header->min.prev_section;
+            if (min != NULL) {
+                __section_header *min_header = min;
+                result.ptr = min;
+                //printf("%p\n", min_header->next);
+                // We are between two sections.
+                if (min_header->next != NULL) {
+                    result.result = 4;
+                }
+                else {
+                    result.result = 3;
+                }
+
+                return result;
+            }
+        }
     }
 
     __section_header *h_section = section;
@@ -104,7 +178,7 @@ __operational_result __find_section_free(void *heap, size_t length) {
         size_t space_between_sections = ((void *) next - ((void *) h_section + sizeof(__section_header) + h_section->section_size));
 
         // If the length between the 2 section in greater then the length needed then put the section there.
-        if (space_between_sections >= length) {
+        if (space_between_sections >= size) {
             result.ptr = h_section;
             result.result = 4;
             return result;
@@ -115,18 +189,22 @@ __operational_result __find_section_free(void *heap, size_t length) {
 }
 
 void *ol_malloc(void *heap, size_t size) {
+    pthread_mutex_lock(&(((__heap_header*)heap)->mutex));
     __heap_header *heap_header = heap;
-    pthread_mutex_lock(&(heap_header->mutex));
+    __operational_result operational;
 
-    __operational_result operational = __find_section_free(heap, size);
+    retry:
+
+    operational = __find_section_free(heap, size);
 
     if (operational.result == 0) {
-        printf("Error!");
         pthread_mutex_unlock(&(heap_header->mutex));
         return NULL;
     } else if (operational.result == 1) {
         __section_header *first_section = operational.ptr;
         if (first_section == NULL) {
+            short int resize_result = __resize_heap(heap);
+            if (resize_result == 1) goto retry;
             pthread_mutex_unlock(&(heap_header->mutex));
             return NULL;
         }
@@ -156,6 +234,8 @@ void *ol_malloc(void *heap, size_t size) {
         size_t sizeof_last_section = sizeof(__section_header) + last_section->section_size;
         __section_header *new_section = (void *) last_section + sizeof_last_section;
         if (__is_in_heap(heap, new_section, size) == NULL) {
+            short int resize_result = __resize_heap(heap);
+            if (resize_result == 1) goto retry;
             pthread_mutex_unlock(&(heap_header->mutex));
             return NULL;
         }
@@ -164,6 +244,16 @@ void *ol_malloc(void *heap, size_t size) {
         new_section->next = NULL;
         new_section->prev = last_section;
         new_section->section_size = size;
+
+
+        // Recalculate the min free section in the heap.
+
+        size_t space_to_end = (heap + heap_header->heap_size) - ((void *) new_section + sizeof(__section_header) + new_section->section_size);
+        if (space_to_end <= heap_header->min.free_size) {
+            heap_header->min.free_size = space_to_end;
+            heap_header->min.prev_section = new_section;
+        }
+
         pthread_mutex_unlock(&(heap_header->mutex));
         return (void *) new_section + sizeof(__section_header);
     } else {
@@ -172,12 +262,24 @@ void *ol_malloc(void *heap, size_t size) {
 
         __section_header *new_section = (void *) last_section + sizeof_last_section;
 
+        __section_header *last_section_next = last_section->next;
+        last_section_next->prev = new_section;
+
         new_section->section_size = size;
         new_section->prev = last_section;
-        new_section->next = last_section->next;
-        new_section->section_size = size;
+        new_section->next = last_section_next;
 
         last_section->next = new_section;
+
+        // Recalculate the min free section in the heap.
+
+        size_t space_to_next = (void *) new_section->next - ((void *) new_section + sizeof(__section_header) + new_section->section_size);
+        if (space_to_next <= heap_header->min.free_size) {
+            heap_header->min.free_size = space_to_next;
+            heap_header->min.prev_section = new_section;
+        }
+
+
         pthread_mutex_unlock(&(heap_header->mutex));
         return (void *) new_section + sizeof(__section_header);
     }
@@ -193,6 +295,20 @@ void ol_free(void *heap, void *data) {
 
     pthread_mutex_lock(&(heap_header->mutex));
 
+
+    // Recalculate the min free section in the heap.
+
+    size_t space_to_next;
+    // Last element in the heap.
+    if (section_header->next == NULL) space_to_next = (heap + heap_header->heap_size) - (void *) section_header;
+    // we are between two sections.
+    else space_to_next = section_header->next - (void *) section_header;
+
+    if (section_header->section_size + sizeof(__section_header) <= heap_header->min.free_size) {
+        heap_header->min.free_size = space_to_next;
+        heap_header->min.prev_section = section_header->prev;
+    }
+
     __section_header *prev = section_header->prev;
     __section_header *next = section_header->next;
     if (section_header == heap_header->first_section) {
@@ -206,6 +322,7 @@ void ol_free(void *heap, void *data) {
         next->prev = prev;
     }
 
+
     pthread_mutex_unlock(&(heap_header->mutex));
 }
 
@@ -217,5 +334,6 @@ void ol_print_heap(void *heap) {
         printf("Address: %p\n", section);
         section = section->next;
     }
+    printf("Size: %lu\n", heap_header->heap_size);
     printf("---------\n");
 }

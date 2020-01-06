@@ -9,7 +9,7 @@
 #include <pthread.h>
 
 #define SHM_HEAP_NAME "memory"
-#define HEAP_SIZE (1024 * 4)
+#define HEAP_SIZE (1024)
 
 /*
  * CODE LIST
@@ -36,6 +36,11 @@ typedef struct {
  */
 
 typedef struct {
+    void *prev_section;
+    size_t free_size;
+} __min_section;
+
+typedef struct {
     size_t section_size; /** The size of the section data. */
     void *prev; /** Previous section in the chain. */
     void *next; /** Next section in the chain. */
@@ -43,11 +48,13 @@ typedef struct {
 
 
 typedef struct {
+    pthread_mutex_t mutex; /** The mutex. Every time when changes are made the mutex is on. */
     size_t heap_size; /** The size of the entire heap. */
     void *first_section; /** The first section that is in the heap. */
     int shm_fd; /** Shared memory file descriptor. */
-    pthread_mutex_t mutex; /** The mutex. Every time when changes are made the mutex is on. */
+    __min_section min; /** The minimum section in the heap. */
 } __heap_header;
+
 
 //----------------------------------------------------------------------------------------------
 

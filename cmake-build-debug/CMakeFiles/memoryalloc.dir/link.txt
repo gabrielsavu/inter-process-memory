@@ -1,1 +1,1 @@
-/usr/bin/cc -g   CMakeFiles/memoryalloc.dir/main.c.o CMakeFiles/memoryalloc.dir/memory.c.o  -o memoryalloc -lrt 
+/usr/bin/cc -g   CMakeFiles/memoryalloc.dir/main.c.o CMakeFiles/memoryalloc.dir/memory.c.o  -o memoryalloc -lrt -pthread 
