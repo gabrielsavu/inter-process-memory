@@ -6,25 +6,19 @@
 
 #IncludeRegexTransform: 
 
-/home/savu/CLionProjects/memoryalloc/internals.h
-glob.h
+/home/savu/CLionProjects/memoryalloc/main.c
+stdio.h
 -
-pthread.h
+stdlib.h
 -
-
-/home/savu/CLionProjects/memoryalloc/memory.c
-memory.h
-/home/savu/CLionProjects/memoryalloc/memory.h
-sys/mman.h
+sys/types.h
+-
+sys/wait.h
 -
 unistd.h
 -
-fcntl.h
--
-stdio.h
--
-internals.h
-/home/savu/CLionProjects/memoryalloc/internals.h
+memory.h
+/home/savu/CLionProjects/memoryalloc/memory.h
 
 /home/savu/CLionProjects/memoryalloc/memory.h
 inttypes.h
