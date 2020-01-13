@@ -150,32 +150,32 @@ main.c.s:
 	$(MAKE) -f CMakeFiles/memoryalloc.dir/build.make CMakeFiles/memoryalloc.dir/main.c.s
 .PHONY : main.c.s
 
-memory.o: memory.c.o
+src/memory.o: src/memory.c.o
 
-.PHONY : memory.o
+.PHONY : src/memory.o
 
 # target to build an object file
-memory.c.o:
-	$(MAKE) -f CMakeFiles/memoryalloc.dir/build.make CMakeFiles/memoryalloc.dir/memory.c.o
-.PHONY : memory.c.o
+src/memory.c.o:
+	$(MAKE) -f CMakeFiles/memoryalloc.dir/build.make CMakeFiles/memoryalloc.dir/src/memory.c.o
+.PHONY : src/memory.c.o
 
-memory.i: memory.c.i
+src/memory.i: src/memory.c.i
 
-.PHONY : memory.i
+.PHONY : src/memory.i
 
 # target to preprocess a source file
-memory.c.i:
-	$(MAKE) -f CMakeFiles/memoryalloc.dir/build.make CMakeFiles/memoryalloc.dir/memory.c.i
-.PHONY : memory.c.i
+src/memory.c.i:
+	$(MAKE) -f CMakeFiles/memoryalloc.dir/build.make CMakeFiles/memoryalloc.dir/src/memory.c.i
+.PHONY : src/memory.c.i
 
-memory.s: memory.c.s
+src/memory.s: src/memory.c.s
 
-.PHONY : memory.s
+.PHONY : src/memory.s
 
 # target to generate assembly for a file
-memory.c.s:
-	$(MAKE) -f CMakeFiles/memoryalloc.dir/build.make CMakeFiles/memoryalloc.dir/memory.c.s
-.PHONY : memory.c.s
+src/memory.c.s:
+	$(MAKE) -f CMakeFiles/memoryalloc.dir/build.make CMakeFiles/memoryalloc.dir/src/memory.c.s
+.PHONY : src/memory.c.s
 
 # Help Target
 help:
@@ -189,9 +189,9 @@ help:
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
-	@echo "... memory.o"
-	@echo "... memory.i"
-	@echo "... memory.s"
+	@echo "... src/memory.o"
+	@echo "... src/memory.i"
+	@echo "... src/memory.s"
 .PHONY : help
 
 

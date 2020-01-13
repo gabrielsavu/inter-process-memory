@@ -5,7 +5,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_C
   "/home/savu/CLionProjects/memoryalloc/main.c" "/home/savu/CLionProjects/memoryalloc/cmake-build-debug/CMakeFiles/memoryalloc.dir/main.c.o"
-  "/home/savu/CLionProjects/memoryalloc/memory.c" "/home/savu/CLionProjects/memoryalloc/cmake-build-debug/CMakeFiles/memoryalloc.dir/memory.c.o"
+  "/home/savu/CLionProjects/memoryalloc/src/memory.c" "/home/savu/CLionProjects/memoryalloc/cmake-build-debug/CMakeFiles/memoryalloc.dir/src/memory.c.o"
   )
 set(CMAKE_C_COMPILER_ID "GNU")
 

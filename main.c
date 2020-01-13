@@ -1,44 +1,52 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include "memory.h"
+#include <errno.h>
+#include "src/memory.h"
 
-int main() {
+int main(int argc, char **argv) {
 
+
+    /**
+     * This example is not a great one because we allocate
+     * all the memory first and the release it.
+     */
     void *heap = ol_init();
 
-
-    printf("Heap: %p\n", heap);
-
-    /*
-    int *a = ol_malloc(heap, 4);
-    int *b = ol_malloc(heap, 4);
-    int *c = ol_malloc(heap, 4);
-
-    ol_free(heap, b);
-    ol_free(heap, c);
-    int *d = ol_malloc(heap, 4);*/
-
-
     unsigned i;
-    for (i = 0; i < 20; i ++) {
-        pid_t c_cpid = fork();
-        if (c_cpid < 0) {
-            printf("Fork error.");
-            return 0;
+    for (i = 1; i < argc; i ++) {
+        pid_t c_pid = fork();
+        if (c_pid < 0) {
+            perror("Fork failed");
+            return errno;
         }
-        if (c_cpid == 0) {
-            void *s = ol_malloc(heap, 4);
-            return 0;
+        if (c_pid == 0) {
+            int choice = (int) argv[i][0] - 48;
+            int elem = atoi(argv[i] + 2);
+            if (choice == 1) {
+                ol_malloc(heap, elem, NULL);
+            }
+
+            exit(0);
         }
+
     }
-    for (i = 0; i < 20; i ++) {
+    for (i = 1; i <= argc; i ++) {
         wait(NULL);
     }
+
+    for (i = 1; i < argc; i ++) {
+        int choice = (int) argv[i][0] - 48;
+        int elem = atoi(argv[i] + 2);
+        if (choice == 0) {
+            char *temp = malloc(10 * sizeof(char));
+            sprintf(temp, "%d", elem);
+            ol_free(heap, 1, temp);
+        }
+    }
+
     ol_print_heap(heap);
-    //getchar();
     ol_destroy(heap);
     return 0;
 }

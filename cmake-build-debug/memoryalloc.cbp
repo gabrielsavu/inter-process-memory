@@ -78,16 +78,16 @@
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="/home/savu/CLionProjects/memoryalloc/internals.h">
-			<Option target="memoryalloc"/>
-		</Unit>
 		<Unit filename="/home/savu/CLionProjects/memoryalloc/main.c">
 			<Option target="memoryalloc"/>
 		</Unit>
-		<Unit filename="/home/savu/CLionProjects/memoryalloc/memory.c">
+		<Unit filename="/home/savu/CLionProjects/memoryalloc/src/internals.h">
 			<Option target="memoryalloc"/>
 		</Unit>
-		<Unit filename="/home/savu/CLionProjects/memoryalloc/memory.h">
+		<Unit filename="/home/savu/CLionProjects/memoryalloc/src/memory.c">
+			<Option target="memoryalloc"/>
+		</Unit>
+		<Unit filename="/home/savu/CLionProjects/memoryalloc/src/memory.h">
 			<Option target="memoryalloc"/>
 		</Unit>
 		<Unit filename="/home/savu/CLionProjects/memoryalloc/CMakeLists.txt">

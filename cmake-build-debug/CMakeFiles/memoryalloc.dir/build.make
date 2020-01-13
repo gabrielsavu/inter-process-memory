@@ -70,29 +70,29 @@ CMakeFiles/memoryalloc.dir/main.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/memoryalloc.dir/main.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/savu/CLionProjects/memoryalloc/main.c -o CMakeFiles/memoryalloc.dir/main.c.s
 
-CMakeFiles/memoryalloc.dir/memory.c.o: CMakeFiles/memoryalloc.dir/flags.make
-CMakeFiles/memoryalloc.dir/memory.c.o: ../memory.c
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/savu/CLionProjects/memoryalloc/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/memoryalloc.dir/memory.c.o"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/memoryalloc.dir/memory.c.o   -c /home/savu/CLionProjects/memoryalloc/memory.c
+CMakeFiles/memoryalloc.dir/src/memory.c.o: CMakeFiles/memoryalloc.dir/flags.make
+CMakeFiles/memoryalloc.dir/src/memory.c.o: ../src/memory.c
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/savu/CLionProjects/memoryalloc/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/memoryalloc.dir/src/memory.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -o CMakeFiles/memoryalloc.dir/src/memory.c.o   -c /home/savu/CLionProjects/memoryalloc/src/memory.c
 
-CMakeFiles/memoryalloc.dir/memory.c.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/memoryalloc.dir/memory.c.i"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/savu/CLionProjects/memoryalloc/memory.c > CMakeFiles/memoryalloc.dir/memory.c.i
+CMakeFiles/memoryalloc.dir/src/memory.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/memoryalloc.dir/src/memory.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/savu/CLionProjects/memoryalloc/src/memory.c > CMakeFiles/memoryalloc.dir/src/memory.c.i
 
-CMakeFiles/memoryalloc.dir/memory.c.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/memoryalloc.dir/memory.c.s"
-	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/savu/CLionProjects/memoryalloc/memory.c -o CMakeFiles/memoryalloc.dir/memory.c.s
+CMakeFiles/memoryalloc.dir/src/memory.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/memoryalloc.dir/src/memory.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/savu/CLionProjects/memoryalloc/src/memory.c -o CMakeFiles/memoryalloc.dir/src/memory.c.s
 
 # Object files for target memoryalloc
 memoryalloc_OBJECTS = \
 "CMakeFiles/memoryalloc.dir/main.c.o" \
-"CMakeFiles/memoryalloc.dir/memory.c.o"
+"CMakeFiles/memoryalloc.dir/src/memory.c.o"
 
 # External object files for target memoryalloc
 memoryalloc_EXTERNAL_OBJECTS =
 
 memoryalloc: CMakeFiles/memoryalloc.dir/main.c.o
-memoryalloc: CMakeFiles/memoryalloc.dir/memory.c.o
+memoryalloc: CMakeFiles/memoryalloc.dir/src/memory.c.o
 memoryalloc: CMakeFiles/memoryalloc.dir/build.make
 memoryalloc: CMakeFiles/memoryalloc.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/savu/CLionProjects/memoryalloc/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking C executable memoryalloc"

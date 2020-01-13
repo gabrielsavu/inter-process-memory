@@ -1,11 +1,6 @@
-//
-// Created by savu on 02.01.2020.
-//
-
 #ifndef MEMORYALLOC_INTERNALS_H
 #define MEMORYALLOC_INTERNALS_H
 
-#include <glob.h>
 #include <pthread.h>
 
 #define SHM_HEAP_NAME "memory"
@@ -42,6 +37,7 @@ typedef struct {
 
 typedef struct {
     size_t section_size; /** The size of the section data. */
+    char name[10]; /** Section name */
     void *prev; /** Previous section in the chain. */
     void *next; /** Next section in the chain. */
 } __section_header;
@@ -49,10 +45,11 @@ typedef struct {
 
 typedef struct {
     pthread_mutex_t mutex; /** The mutex. Every time when changes are made the mutex is on. */
+    __min_section min; /** The minimum section in the heap. */
     size_t heap_size; /** The size of the entire heap. */
     void *first_section; /** The first section that is in the heap. */
     int shm_fd; /** Shared memory file descriptor. */
-    __min_section min; /** The minimum section in the heap. */
+    int counter; /** It is used to count the malloc usages. */
 } __heap_header;
 
 

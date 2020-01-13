@@ -1,12 +1,8 @@
-//
-// Created by savu on 14.12.2019.
-//
-
-#include "memory.h"
 #include <sys/mman.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include "internals.h"
 
 void *ol_init(void) {
@@ -148,7 +144,6 @@ __operational_result __find_section_free(void *heap, size_t size) {
             if (min != NULL) {
                 __section_header *min_header = min;
                 result.ptr = min;
-                //printf("%p\n", min_header->next);
                 // We are between two sections.
                 if (min_header->next != NULL) {
                     result.result = 4;
@@ -188,8 +183,8 @@ __operational_result __find_section_free(void *heap, size_t size) {
     return result;
 }
 
-void *ol_malloc(void *heap, size_t size) {
-    pthread_mutex_lock(&(((__heap_header*)heap)->mutex));
+void *ol_malloc(void *heap, size_t size, char *name) {
+    pthread_mutex_lock(&(((__heap_header *) heap)->mutex));
     __heap_header *heap_header = heap;
     __operational_result operational;
 
@@ -212,6 +207,10 @@ void *ol_malloc(void *heap, size_t size) {
         first_section->next = NULL;
         first_section->prev = NULL;
         first_section->section_size = size;
+        if (name != NULL) memcpy(first_section->name, name, strlen(name) + 1);
+        else sprintf(first_section->name, "%d", heap_header->counter);
+        heap_header->counter ++;
+
         pthread_mutex_unlock(&(heap_header->mutex));
         return (void *) first_section + sizeof(__section_header);
     } else if (operational.result == 2) {
@@ -223,6 +222,9 @@ void *ol_malloc(void *heap, size_t size) {
         new_first_section->next = old_first_section;
         new_first_section->prev = NULL;
         new_first_section->section_size = size;
+        if (name != NULL) memcpy(new_first_section->name, name, strlen(name) + 1);
+        else sprintf(new_first_section->name, "%d", heap_header->counter);
+        heap_header->counter ++;
 
         old_first_section->prev = new_first_section;
         pthread_mutex_unlock(&(heap_header->mutex));
@@ -244,11 +246,14 @@ void *ol_malloc(void *heap, size_t size) {
         new_section->next = NULL;
         new_section->prev = last_section;
         new_section->section_size = size;
-
+        if (name != NULL) memcpy(new_section->name, name, strlen(name) + 1);
+        else sprintf(new_section->name, "%d", heap_header->counter);
+        heap_header->counter ++;
 
         // Recalculate the min free section in the heap.
 
-        size_t space_to_end = (heap + heap_header->heap_size) - ((void *) new_section + sizeof(__section_header) + new_section->section_size);
+        size_t space_to_end = (heap + heap_header->heap_size) -
+                              ((void *) new_section + sizeof(__section_header) + new_section->section_size);
         if (space_to_end <= heap_header->min.free_size) {
             heap_header->min.free_size = space_to_end;
             heap_header->min.prev_section = new_section;
@@ -268,12 +273,16 @@ void *ol_malloc(void *heap, size_t size) {
         new_section->section_size = size;
         new_section->prev = last_section;
         new_section->next = last_section_next;
+        if (name != NULL) memcpy(new_section->name, name, strlen(name) + 1);
+        else sprintf(new_section->name, "%d", heap_header->counter);
+        heap_header->counter ++;
 
         last_section->next = new_section;
 
         // Recalculate the min free section in the heap.
 
-        size_t space_to_next = (void *) new_section->next - ((void *) new_section + sizeof(__section_header) + new_section->section_size);
+        size_t space_to_next = (void *) new_section->next -
+                               ((void *) new_section + sizeof(__section_header) + new_section->section_size);
         if (space_to_next <= heap_header->min.free_size) {
             heap_header->min.free_size = space_to_next;
             heap_header->min.prev_section = new_section;
@@ -285,53 +294,72 @@ void *ol_malloc(void *heap, size_t size) {
     }
 }
 
-void ol_free(void *heap, void *data) {
+void ol_free(void *heap, short int option, void *data) {
     if (data == NULL || heap == NULL) {
         return;
     }
-
     __heap_header *heap_header = heap;
-    __section_header *section_header = data - sizeof(__section_header);
 
     pthread_mutex_lock(&(heap_header->mutex));
 
-
-    // Recalculate the min free section in the heap.
-
-    size_t space_to_next;
-    // Last element in the heap.
-    if (section_header->next == NULL) space_to_next = (heap + heap_header->heap_size) - (void *) section_header;
-    // we are between two sections.
-    else space_to_next = section_header->next - (void *) section_header;
-
-    if (section_header->section_size + sizeof(__section_header) <= heap_header->min.free_size) {
-        heap_header->min.free_size = space_to_next;
-        heap_header->min.prev_section = section_header->prev;
+    if (option == 1) {
+        __section_header *section = heap_header->first_section;
+        while (section != NULL) {
+            __section_header *next = section->next;
+            if (strcmp(section->name, data) == 0) {
+                data = (void *) section + sizeof(__section_header);
+                goto free;
+            }
+            section = next;
+        }
+        pthread_mutex_unlock(&(heap_header->mutex));
+        return;
     }
 
-    __section_header *prev = section_header->prev;
-    __section_header *next = section_header->next;
-    if (section_header == heap_header->first_section) {
-        heap_header->first_section = next;
-    }
+    free:
+    {
 
-    if (prev != NULL) {
-        prev->next = next;
-    }
-    if (next != NULL) {
-        next->prev = prev;
-    }
+        __section_header *section_header = data - sizeof(__section_header);
+
+        // Recalculate the min free section in the heap.
+
+        size_t space_to_next;
+
+        // Last element in the heap.
+        if (section_header->next == NULL) space_to_next = (heap + heap_header->heap_size) - (void *) section_header;
+            // we are between two sections.
+        else space_to_next = section_header->next - (void *) section_header;
+
+        if (section_header->section_size + sizeof(__section_header) <= heap_header->min.free_size) {
+            heap_header->min.free_size = space_to_next;
+            heap_header->min.prev_section = section_header->prev;
+        }
+
+        __section_header *prev = section_header->prev;
+        __section_header *next = section_header->next;
+        if (section_header == heap_header->first_section) {
+            heap_header->first_section = next;
+        }
+
+        if (prev != NULL) {
+            prev->next = next;
+        }
+        if (next != NULL) {
+            next->prev = prev;
+        }
 
 
-    pthread_mutex_unlock(&(heap_header->mutex));
+        pthread_mutex_unlock(&(heap_header->mutex));
+    }
 }
+
 
 void ol_print_heap(void *heap) {
     printf("---------\n");
     __heap_header *heap_header = heap;
     __section_header *section = heap_header->first_section;
     while(section != NULL) {
-        printf("Address: %p\n", section);
+        printf("Address: %p, Name: %s\n", section, section->name);
         section = section->next;
     }
     printf("Size: %lu\n", heap_header->heap_size);

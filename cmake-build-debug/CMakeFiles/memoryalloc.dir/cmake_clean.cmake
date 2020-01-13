@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/memoryalloc.dir/main.c.o"
-  "CMakeFiles/memoryalloc.dir/memory.c.o"
+  "CMakeFiles/memoryalloc.dir/src/memory.c.o"
   "memoryalloc"
   "memoryalloc.pdb"
 )
